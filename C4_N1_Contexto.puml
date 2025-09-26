@@ -1,0 +1,62 @@
+@startuml C4_N1_Contexto
+left to right direction
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam linetype ortho
+skinparam ArrowThickness 1.6
+skinparam ArrowColor #1f3c88
+
+' >>> más espacio y margen para agrandar el boundary <<<
+skinparam nodesep 100
+skinparam ranksep 700
+skinparam Padding 12
+
+skinparam rectangle {
+  RoundCorner 12
+  BorderColor #1f3c88
+  BackgroundColor white
+}
+skinparam rectangle<<boundary>> {
+  BackgroundColor #EEF6FF
+  BorderColor #1f3c88
+  BorderThickness 2
+}
+skinparam rectangle<<external>> {
+  BackgroundColor #FFF7DA
+  BorderColor #B28A00
+}
+skinparam rectangle<<secondary>> {
+  BackgroundColor #F7F7F7
+}
+
+legend right
+<b>Línea sólida (azul)</b> = Síncrono (REST/gRPC/HTTPS)
+<b>Línea discontinua (ámbar)</b> = Evento (AsyncAPI/Kafka/CDC)
+endlegend
+
+rectangle "«boundary»\nBanco – Sistema Global (Boundary)" <<boundary>> as Banco {
+  rectangle "Canales Web/Móvil\nBanca Digital + BFF" as Canales
+  rectangle "Capa de Integración\nAPI Gateway + Event Mesh + ESB" as Integracion
+  rectangle "Core Bancario Digital\nMicroservicios BIAN" <<secondary>> as CoreDigital
+  rectangle "Core Bancario Legado\nAS/400 · COBOL" <<secondary>> as CoreLegacy
+  rectangle "Gestión de Riesgos & Fraude\nRisk Engine · Fraud Scoring" <<secondary>> as Riesgo
+}
+
+rectangle "«external»\nClientes\nApp/Web" <<external>> as Clientes
+rectangle "«external»\nRed de Pagos\nISO 8583 / 20022" <<external>> as RedPagos
+rectangle "«external»\nTerceros (Open Finance)\nPartners / Fintech / PSP" <<external>> as Terceros
+rectangle "«external»\nReguladores\nSBS / PCI / LOPDP" <<external>> as Reguladores
+
+Clientes -right-> Canales : HTTPS\nSync
+Canales -right-> Integracion : REST/gRPC\nSync
+Integracion -right-> Terceros : Open Finance APIs\nSync
+RedPagos -right-> CoreLegacy : ISO 8583 / 20022\nSync
+Integracion -down-> CoreLegacy : ESB (SOAP/MQ/DB)\nSync
+Integracion -down-> CoreDigital : APIs de dominio (REST/gRPC)\nSync
+Integracion -right-> Reguladores : Reportes/ODS (batch/stream)\nSync
+Riesgo -up-> Integracion : Scoring / Decisiones\nSync
+
+' Eventos (discontinuo ámbar)
+Integracion -[#D07A00,dashed]-> Riesgo : Transacciones\nAsync
+@enduml

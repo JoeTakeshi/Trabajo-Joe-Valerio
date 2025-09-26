@@ -1,0 +1,70 @@
+@startuml C4_N2_Contenedores
+left to right direction
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam linetype ortho
+skinparam ArrowThickness 1.6
+skinparam ArrowColor #1f3c88
+
+' >>> más espacio y margen para agrandar el boundary <<<
+skinparam nodesep 400
+skinparam ranksep 500
+skinparam Padding 12
+
+skinparam rectangle {
+  RoundCorner 12
+  BorderColor #1f3c88
+}
+skinparam rectangle<<boundary>> {
+  BackgroundColor #EEF6FF
+  BorderColor #1f3c88
+  BorderThickness 2
+}
+skinparam rectangle<<secondary>> {
+  BackgroundColor #F7F7F7
+}
+
+legend right
+<b>Sólido azul</b> = Síncrono (REST/gRPC) · <b>Discontinuo ámbar</b> = Evento (AsyncAPI/Kafka)
+endlegend
+
+rectangle "«boundary»\nBanco – Plataforma Digital" <<boundary>> as Banco {
+  rectangle "Canal Web SPA" as Web
+  rectangle "Canal Móvil (iOS/Android)" as Movil
+  rectangle "BFF por canal\n(API composition · cache)" as BFF
+  rectangle "API Gateway + WAF\nmTLS · OAuth2/OIDC · Rate Limits" as Gateway
+  rectangle "Event Mesh\nKafka/NATS + Schema Registry" as Mesh
+  rectangle "Adapter Legado / ESB\nTransformación · Orquestación · SOAP/MQ/DB" as ESB
+  rectangle "Core Digital\nMicroservicios BIAN\n(Accounts, Payments, Customer, KYC)" <<secondary>> as CoreDigital
+  rectangle "Core Legado\nAS/400 · COBOL/DB2" <<secondary>> as CoreLegacy
+  rectangle "Plataforma de Pagos\nSwitch/Orquestador · PCI DSS" <<secondary>> as Pagos
+  rectangle "Plataforma de Datos\nLakehouse/ODS · CDC · BI" <<secondary>> as Datos
+  rectangle "IAM/CIAM (IdP)\nOIDC/SAML/SCIM · MFA" <<secondary>> as IdP
+  rectangle "Riesgo & Fraude\nModel Serving · Feature Store" <<secondary>> as Riesgo
+}
+
+Web -right-> BFF : REST\nSync
+Movil -right-> BFF : REST\nSync
+BFF -right-> Gateway : REST/gRPC\nSync
+
+Gateway -right-> ESB : REST\nSync
+Gateway -down-> Mesh : Publicación/Consumo\nAsync
+Gateway -down-> IdP : OIDC/OAuth2\nSync
+
+Mesh -down-> CoreDigital : Eventos de dominio\nAsync
+Gateway -down-> CoreDigital : APIs de dominio\nSync
+ESB -down-> CoreLegacy : SOAP/MQ/DB\nSync
+Gateway -down-> Pagos : Procesamiento pagos\nSync
+Mesh -down-> Pagos : Eventos de pagos\nAsync
+Mesh -down-> Riesgo : Transacciones\nAsync
+Gateway -down-> Riesgo : Scoring / Decisiones\nSync
+Mesh -right-> Datos : CDC / Streaming\nAsync
+
+' Estilo de eventos explícito
+Gateway -[#D07A00,dashed]-> Mesh
+Mesh -[#D07A00,dashed]-> CoreDigital
+Mesh -[#D07A00,dashed]-> Pagos
+Mesh -[#D07A00,dashed]-> Riesgo
+Mesh -[#D07A00,dashed]-> Datos
+@enduml

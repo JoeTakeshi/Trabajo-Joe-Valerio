@@ -1,0 +1,76 @@
+@startuml C4_N3A_Componentes_Integracion
+left to right direction
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam linetype ortho
+skinparam ArrowThickness 1.6
+skinparam ArrowColor #1f3c88
+
+' >>> más espacio y margen para agrandar el boundary <<<
+skinparam nodesep 200
+skinparam ranksep 1100
+skinparam Padding 12
+
+skinparam rectangle {
+  RoundCorner 12
+  BorderColor #1f3c88
+}
+skinparam rectangle<<boundary>> {
+  BackgroundColor #EEF6FF
+  BorderColor #1f3c88
+  BorderThickness 2
+}
+skinparam rectangle<<secondary>> {
+  BackgroundColor #F7F7F7
+}
+
+legend right
+<b>Sólido</b> = Síncrono (REST/gRPC) · <b>Discontinuo ámbar</b> = Evento (AsyncAPI/Kafka)
+endlegend
+
+rectangle "«boundary»\nCapa de Integración" <<boundary>> as Integ {
+  rectangle "WAF" as WAF
+  rectangle "API Gateway\nEnrutamiento · rate limit · JWT/mTLS" as GW
+  rectangle "Adapter Legado / ESB\nTransformación · Orquestación · SOAP/MQ/DB" as ADP
+  rectangle "Transformación & Mapeo\nModelo canónico ⇄ Legacy/BIAN" as MAP
+  rectangle "Orquestador / Sagas\nCompensaciones · retries" as SAGA
+  rectangle "Outbox / CDC\nDebezium/Triggers" as OUTBOX
+  rectangle "Idempotency Cache" as IDEM
+  rectangle "Event Mesh\nKafka/NATS · CloudEvents" as BUS
+  rectangle "Schema Registry\nAvro/Protobuf" as REG
+  rectangle "DLQ / Cuarentena\nDead-letter · reingresos" as DLQ
+  rectangle "Observabilidad\nOTel · logs · métricas" as OBS
+}
+
+rectangle "Core Digital\nMicroservicios BIAN" <<secondary>> as CoreDigital
+rectangle "Core Legado\nAS/400/COBOL" <<secondary>> as CoreLegacy
+rectangle "Plataforma de Datos\nODS/Lakehouse" <<secondary>> as Datos
+rectangle "Riesgo & Fraude\nScoring/Rules/ML" <<secondary>> as Riesgo
+rectangle "Canales" <<secondary>> as Canales
+
+Canales -right-> WAF : HTTPS\nSync
+WAF -right-> GW : L7 proxy\nSync
+GW -right-> ADP : REST/gRPC\nSync
+GW -down-> BUS : Publicación/Consumo\nAsync
+ADP -down-> MAP : Mapeo\nSync
+SAGA -right-> ADP : Comandos/Orq.\nSync
+ADP -down-> CoreLegacy : SOAP/MQ/DB\nSync
+BUS -down-> CoreDigital : Eventos de dominio\nAsync
+GW -down-> CoreDigital : APIs de dominio\nSync
+OUTBOX -down-> BUS : Cambios→Eventos\nAsync
+BUS -right-> Datos : CDC / Streaming\nAsync
+BUS -right-> Riesgo : Transacciones\nAsync
+Riesgo -left-> GW : Scoring síncrono\nSync
+REG -down-> BUS : Esquemas\nSync
+DLQ -up-> ADP : Reprocesos\nSync
+IDEM -up-> ADP : Idempotencia\nSync
+OBS -up-> ADP : Logs/Metrics/Traces\nSync
+OBS -up-> BUS : Logs/Metrics/Traces\nSync
+
+GW -[#D07A00,dashed]-> BUS
+OUTBOX -[#D07A00,dashed]-> BUS
+BUS -[#D07A00,dashed]-> CoreDigital
+BUS -[#D07A00,dashed]-> Datos
+BUS -[#D07A00,dashed]-> Riesgo
+@enduml

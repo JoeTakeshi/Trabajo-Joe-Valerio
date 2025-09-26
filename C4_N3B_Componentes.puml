@@ -1,0 +1,56 @@
+@startuml C4_N3B_Componentes_API_Seguridad
+left to right direction
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam linetype ortho
+skinparam ArrowThickness 1.6
+skinparam ArrowColor #1f3c88
+
+' >>> más espacio y margen para agrandar el boundary <<<
+skinparam nodesep 200
+skinparam ranksep 500
+skinparam Padding 12
+
+skinparam rectangle {
+  RoundCorner 12
+  BorderColor #1f3c88
+}
+skinparam rectangle<<boundary>> {
+  BackgroundColor #EEF6FF
+  BorderColor #1f3c88
+  BorderThickness 2
+}
+skinparam rectangle<<secondary>> {
+  BackgroundColor #F7F7F7
+}
+
+legend right
+<b>Sólido</b> = Síncrono (REST/gRPC) · <b>Discontinuo ámbar</b> = Evento (AsyncAPI/Kafka)
+endlegend
+
+rectangle "«boundary»\nBorde API + Seguridad" <<boundary>> as Edge {
+  rectangle "WAF" as WAF
+  rectangle "API Gateway\nEnrutamiento · rate limit · JWT/mTLS" as GW
+  rectangle "BFF Web\nAPI composition" as BFFWeb
+  rectangle "BFF Móvil\nAPI composition (PKCE)" as BFFMob
+  rectangle "PDP / Policy Engine\nOPA/ABAC" as PDP
+  rectangle "Identity Provider (IdP)\nOIDC/OAuth2/SAML/SCIM · MFA" as IDP
+  rectangle "API Manager / Dev Portal\nCatálogo · Versionado · SLAs · Monetización" as APIMgr
+}
+
+rectangle "Servicios internos\n(Microservicios BIAN + Integración)" <<secondary>> as Services
+rectangle "Clientes" <<secondary>> as Clientes
+
+Clientes -right-> WAF : HTTPS\nSync
+WAF -right-> GW : L7 proxy\nSync
+GW -down-> IDP : OIDC (Auth Code + PKCE)\nSync
+GW -down-> PDP : AuthZ (decisión)\nSync
+GW -right-> BFFWeb : REST/gRPC\nSync
+GW -right-> BFFMob : REST/gRPC\nSync
+BFFWeb -right-> Services : REST\nSync
+BFFMob -right-> Services : REST\nSync
+Services -down-> APIMgr : Observabilidad / Lifecycle\nSync
+
+Services -[#D07A00,dashed]-> GW : Webhooks / Eventos\nAsync
+@enduml
